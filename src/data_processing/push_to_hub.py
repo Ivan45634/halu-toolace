@@ -22,7 +22,8 @@ CONFIGS = ("combined", "contradiction", "missing_tool", "overgeneration")
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("repo_id", help="Target dataset repo, e.g. <user>/toolace-hallucination-spans.")
-    parser.add_argument("--data-dir", default="data")
+    parser.add_argument("--data-dir", default="data/final",
+                        help="Root holding <config>/<split>.jsonl. Default: data/final (the post-audit merged dataset).")
     parser.add_argument("--private", action="store_true", default=True)
     parser.add_argument("--public", dest="private", action="store_false")
     parser.add_argument("--readme", default="DATASET_CARD.md")

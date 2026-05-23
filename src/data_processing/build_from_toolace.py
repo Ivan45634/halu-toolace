@@ -33,9 +33,11 @@ from typing import Any
 from datasets import load_dataset
 
 try:
-    from corruptors import collect_corpus_pool, make_corruptions
+    from .corruptors import collect_corpus_pool, make_corruptions  # package mode
 except ImportError:
-    from scripts.corruptors import collect_corpus_pool, make_corruptions
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).parent))
+    from corruptors import collect_corpus_pool, make_corruptions  # type: ignore  # script mode
 
 
 SOURCE_DATASET = "minpeter/toolace-parsed"

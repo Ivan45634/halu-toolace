@@ -1,9 +1,10 @@
 """Validation + zero-shot baseline for the tool-calling hallucination dataset.
 
 Usage:
-  python scripts/zero_shot_eval.py [--dataset-dir data/combined] [--split validation]
-                                   [--no-model] [--max-records N]
-                                   [--model-id KRLabsOrg/lettucedect-base-modernbert-en-v1]
+  python -m src.data_processing.zero_shot_eval [--dataset-dir data/combined]
+                                                [--split validation]
+                                                [--no-model] [--max-records N]
+                                                [--model-id KRLabsOrg/lettucedect-base-modernbert-en-v1]
 
 Three checks per dataset split:
   1. Sanity         — uniqueness, label length distribution, position bias, query<->output overlap.
@@ -26,7 +27,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Iterable
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATASET_DIR = ROOT / "data" / "combined"
 
 WORD_RE = re.compile(r"[A-Za-z0-9]+")
