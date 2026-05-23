@@ -15,8 +15,6 @@ prompts (CONFIRM_SYSTEM / RECLASSIFY_SYSTEM from common.py), and the same span
 localization helper (find_span).
 """
 
-from __future__ import annotations
-
 import argparse
 import json
 import sys
@@ -26,37 +24,20 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
-try:
-    from .common import (  # package mode
-        CONFIRM_SYSTEM,
-        CONFIRM_USER_TEMPLATE,
-        RECLASSIFY_SYSTEM,
-        RECLASSIFY_USER_TEMPLATE,
-        OpenRouterJudge,
-        collect_tool_names,
-        derive_type_hint,
-        find_span,
-        load_jsonl,
-        parse_json_object,
-        truncate,
-        write_jsonl,
-    )
-except ImportError:
-    sys.path.insert(0, str(Path(__file__).parent))
-    from common import (  # type: ignore  # script mode
-        CONFIRM_SYSTEM,
-        CONFIRM_USER_TEMPLATE,
-        RECLASSIFY_SYSTEM,
-        RECLASSIFY_USER_TEMPLATE,
-        OpenRouterJudge,
-        collect_tool_names,
-        derive_type_hint,
-        find_span,
-        load_jsonl,
-        parse_json_object,
-        truncate,
-        write_jsonl,
-    )
+from .common import (
+    CONFIRM_SYSTEM,
+    CONFIRM_USER_TEMPLATE,
+    RECLASSIFY_SYSTEM,
+    RECLASSIFY_USER_TEMPLATE,
+    OpenRouterJudge,
+    collect_tool_names,
+    derive_type_hint,
+    find_span,
+    load_jsonl,
+    parse_json_object,
+    truncate,
+    write_jsonl,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 SPLITS = ("train", "validation", "test")
