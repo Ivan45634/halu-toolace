@@ -23,7 +23,7 @@ ToolACE
   │  load_dataset("minpeter/toolace-parsed", "toolace", split="train")
   ▼
 ┌───────────────────────────────────────┐
-│ scripts/build_from_toolace.py         │
+│ src/data_processing/build_from_toolace.py         │
 │  - schema filter (5 mandatory parts)  │
 │  - len & query↔output overlap filter  │
 │  - per-base deterministic split       │
@@ -32,7 +32,7 @@ ToolACE
                   │ clean source examples (~720)
                   ▼
 ┌───────────────────────────────────────┐
-│ scripts/corruptors.py  (rule-based)   │
+│ src/data_processing/corruptors.py  (rule-based)   │
 │  - contradiction (≥4-char spans,      │
 │    cross-record value pool)           │
 │  - overgeneration (8 templates,       │
@@ -44,7 +44,7 @@ ToolACE
                   │ ≈2,646 records, 4 configs
                   ▼
 ┌───────────────────────────────────────┐
-│ scripts/validate_spans.py             │
+│ src/data_processing/validate_spans.py             │
 │  - schema validation                  │
 │  - output[start:end] == text          │
 │  - same base_id stays in one split    │
@@ -53,7 +53,7 @@ ToolACE
    ┌──────────────┼──────────────┐
    ▼              ▼              ▼
 ┌──────────────────────┐ ┌────────────────────────┐ ┌────────────────────────┐
-│ zero_shot_eval.py    │ │ quality_audit.py       │ │ llm_augment.py         │
+│ zero_shot_eval.py    │ │ audit.py (run subcommand)       │ │ llm_augment.py         │
 │  - sanity stats      │ │  - LLM-as-judge        │ │  - LLM-generated       │
 │  - lexical baseline  │ │    (Qwen2.5-3B-Instruct│ │    contradictions /    │
 │  - LettuceDetect ZS  │ │     on MPS)            │ │    overgenerations /   │
@@ -66,7 +66,7 @@ ToolACE
                   ┌─────────────────────────────────────────────┘
                   ▼
 ┌───────────────────────────────────────┐
-│ scripts/push_to_hub.py                │
+│ src/data_processing/push_to_hub.py                │
 │  - 4 configs as separate dataset      │
 │    configurations (combined +         │
 │    per-type)                          │
@@ -136,22 +136,23 @@ Current numbers on `combined/validation`:
 | Lexical baseline F1 | 0.156 |
 | LettuceDetect F1 | 0.198 (+0.04) |
 
-### 4. LLM-as-judge audit (`quality_audit.py`)
+### 4. LLM-as-judge audit (`audit run`)
 
-This is the *new* contribution.
-
-For each record we ask Qwen2.5-3B-Instruct, in JSON-only mode:
+For each record we ask an LLM judge, in JSON-only mode:
 
 1. *Given the user query, the tool context, the available tools, and the
    assistant's answer, is the candidate hallucination span actually a
    hallucination of the stated type?*
 2. *Are there any other hallucinated phrases the labelers missed?*
 
-The judge has access to `meta.original` for `contradiction` records so it can
-see what value was replaced (otherwise it'd have to guess from the context
-alone, which is unreliable for arbitrary identifiers).
+Two backends are supported:
+- `--backend local` runs a transformers model on MPS/CPU (Qwen2.5-3B-Instruct
+  used in initial trials, too weak in practice).
+- `--backend openrouter --judge-model openai/gpt-oss-120b:free` proxies through
+  OpenRouter (used in the final audit; much stronger but ~3 sec per call). The
+  driver parallelizes 6 calls at a time and writes incremental progress.
 
-Decisions are written verbatim plus parsed:
+Decisions per record are written verbatim plus parsed:
 
 ```json
 {
@@ -168,55 +169,96 @@ Decisions are written verbatim plus parsed:
 }
 ```
 
-Two outputs are then derived:
+Two outputs are derived from each split:
+- `high_confidence.jsonl` — judge confirms the label (corrupted) or sees no extra
+  hallucination (clean).
+- `summary.md` — per-type counts of `label_correct = true / false / unknown` and
+  `extra_found`. Reveals where the rule-based corruptor is too naive.
 
-- `high_confidence.jsonl` — records where the judge confirms the label (for
-  corrupted) or sees no extra hallucination (for clean). This is the subset
-  we'd actually train on.
-- `summary.md` — per-type breakdown of `label_correct` outcomes and
-  parse-error rate, so we can spot a corruption type whose labels the judge
-  systematically rejects (which is a sign the rule-based corruptor is too
-  naive for that type).
+### 5. Recover + Patch (`recover cleans`, `recover extra-spans`)
 
-### 5. LLM augmentation (`llm_augment.py`)
+The audit surfaces two distinct quality problems that the basic filter cannot fix
+on its own:
 
-For data diversity beyond the rule-based templates: we let the same Qwen
-model *write* a hallucinated phrase of the requested type, then use the
-sentence-boundary insertion logic from the rule-based pipeline to place it
-inside a clean answer, recording exact character offsets.
+- **False-negative cleans.** The judge often flags hidden hallucinations inside
+  records we labeled clean (309 / 39 / 41 across train / val / test). These come
+  from imperfect ToolACE source generations, not from our pipeline. `recover`
+  locates the judge's `extra_text` in the output, asks a second judge call to
+  confirm and classify, and emits a new record with that span as a labeled
+  hallucination. Result: 280 / 32 / 30 *real* hallucinations added to the
+  dataset, mostly overgeneration.
+- **Extra hallucinations inside confirmed-corrupted records.** Judge confirms
+  our label AND finds a second hallucination of (often) a different type. `patch`
+  reuses the same recover/confirm machinery to append an extra label to the
+  existing record so the second hallucination is annotated too. 464 / 61 / 52
+  records receive a second label.
 
-This combines the strengths of both:
+`recover other` is a follow-up pass on records the confirm-judge rejected
+above. With an extended `{contradiction, overgeneration, missing_tool, off_topic,
+not_hallucination}` taxonomy, it salvages 47 records as `other` (mostly
+`off_topic` — answers that don't address the user query). These records live
+under `data/other/` and are intentionally excluded from `data/final` because
+they break the RAGTruth 3-type validator schema; downstream consumers who want
+them can opt in.
 
-- LLM brings lexical variety and semantic plausibility (no fixed templates).
-- Mechanical insertion guarantees `output[start:end] == text` and known
-  positional distribution.
+### 6. Merge (`merge_final.py`)
 
-`meta.corruption_source = "llm_augment"` lets downstream training mix or
-split this subset cleanly.
+Combines patched + recovered records per split, then routes them into the four
+configurations. Because the project keeps the strict RAGTruth schema (one
+`corruption_type` per record, all labels of that type), any patched secondary
+label whose type differs from the record's primary `corruption_type` is dropped
+at merge. The hallucinated text remains in the output but is no longer
+annotated — preserved in `data/combined_patched/` for callers who want full
+multi-type annotation.
+
+### 7. LLM augmentation (`llm_augment.py`) — optional
+
+For extra lexical diversity beyond rule-based templates: an LLM generates a new
+hallucinated phrase for the requested type, then the sentence-boundary insertion
+logic from the rule-based pipeline places it inside a clean answer with exact
+character offsets. `meta.corruption_source = "llm_augment"` lets downstream
+training mix or split this subset cleanly. Not enabled in the current published
+dataset.
 
 ## How to reproduce
 
 ```bash
 # (one-time) create venv (Python 3.11 needed for datasets' lzma import)
 uv venv --python 3.11 .venv
-uv pip install --python .venv/bin/python datasets huggingface_hub \
-                                          'transformers>=4.48,<5' torch lettucedetect
+uv pip install --python .venv/bin/python -r requirements.txt
 
 # 1. Build
-.venv/bin/python scripts/build_from_toolace.py
-.venv/bin/python scripts/validate_spans.py --allow-clean data/combined/*.jsonl
+.venv/bin/python src/data_processing/build_from_toolace.py
+.venv/bin/python src/data_processing/validate_spans.py --allow-clean data/combined/*.jsonl
 
-# 2. Signal-level evaluation (sanity + lexical + lettuce)
+# 2. Signal-level evaluation (sanity + lexical + LettuceDetect)
 for ds in combined contradiction missing_tool overgeneration; do
-  .venv/bin/python scripts/zero_shot_eval.py --dataset-dir data/$ds --split validation
+  .venv/bin/python src/data_processing/zero_shot_eval.py --dataset-dir data/$ds --split validation
 done
 
-# 3. Quality audit (LLM-as-judge)
-.venv/bin/python scripts/quality_audit.py --dataset-dir data/combined --split validation
+# 3. LLM-as-judge audit (gpt-oss-120b via OpenRouter)
+for split in train validation test; do
+  .venv/bin/python src/data_processing/audit.py run \
+      --backend openrouter --judge-model openai/gpt-oss-120b:free \
+      --dataset-dir data/combined --split $split --no-lettuce
+done
 
-# 4. (Optional) LLM augmentation
-.venv/bin/python scripts/llm_augment.py --source data/combined --split validation --n 30
+# 4. Recover + patch + reclassify
+for split in train validation test; do
+  .venv/bin/python src/data_processing/recover.py cleans \
+      --decisions data/quality_audit_openrouter/combined/$split/decisions.jsonl \
+      --source data/combined/$split.jsonl \
+      --out-dir data/recovered --split $split
+done
+.venv/bin/python src/data_processing/recover.py extra-spans
+.venv/bin/python src/data_processing/recover.py other
 
-# 5. Publish
-.venv/bin/python scripts/push_to_hub.py <user>/toolace-hallucination-spans
+# 5. Final merge + validation
+.venv/bin/python src/data_processing/merge_final.py
+.venv/bin/python src/data_processing/validate_spans.py --allow-clean \
+    data/final/combined/*.jsonl data/final/*/*.jsonl
+
+# 6. Publish (data/final is the default --data-dir)
+.venv/bin/python src/data_processing/push_to_hub.py <user>/toolace-hallucination-spans \
+    --readme DATASET_CARD.md
 ```

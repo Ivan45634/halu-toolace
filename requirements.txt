@@ -4,6 +4,11 @@ transformers>=4.48,<5
 torch>=2.0
 lettucedetect>=0.1.7
 
+# audit/recover via OpenRouter judges + Excel export
+openai>=1.0
+python-dotenv>=1.0
+openpyxl>=3.1
+
 # notebook / analysis
 pandas>=2.0
 ipykernel>=6.0

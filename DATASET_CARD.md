@@ -117,17 +117,41 @@ Only ToolACE rows that pass all of the following are kept:
 - `80 <= len(output) <= 2500` characters (avoid trivial or overlong answers)
 - `len(query_words ∩ output_words) / len(query_words) >= 0.10` — drops off-topic rows that the parsed ToolACE occasionally contains (e.g. caste-system query answered with a linked-list explanation), which would otherwise pollute the corruption signal.
 
+## Pipeline
+
+The dataset is built in four stages:
+
+1. **Build** (`build_from_toolace.py` + `corruptors.py`) — load ToolACE, filter, inject regex-based corruptions.
+2. **Audit** (`audit run` with `openai/gpt-oss-120b:free` via OpenRouter) — LLM-as-judge validates every label.
+3. **Recover + Patch** (`recover cleans`, `recover extra-spans`) — salvage records the audit found problematic:
+   - `recover` turns false-negative cleans (clean records where judge spotted a hallucination) into labeled records.
+   - `patch` adds extra labels to confirmed-corrupted records where judge found a *second* hallucination.
+4. **Merge** (`merge_final.py`) — assemble `data/final/<config>/<split>.jsonl` from patched + recovered, dropping labels whose type doesn't match the record's primary `corruption_type` to satisfy the strict RAGTruth one-type-per-record schema.
+
 ## Build statistics
 
 | Item | Value |
 |---|---|
-| Rows scanned | 11,072 |
-| Rows accepted | 720 |
-| Records by type | clean: 720, contradiction: 486, missing_tool: 720, overgeneration: 720 |
-| Records (combined config) | train 2,118 / val 264 / test 264 |
-| Splits | 80 / 10 / 10 by deterministic hash over `base_id` (all variants of one base stay in one split) |
+| ToolACE rows scanned | 11,072 |
+| Rows accepted by schema + length + overlap filters | 720 |
+| Records after regex corruption | 2,646 (720 clean + 486 contradiction + 720 missing_tool + 720 overgeneration) |
+| Records confirmed by LLM judge (gpt-oss-120b) | 1,675 / 209 / 205 (train/val/test) |
+| Records recovered from false-negative cleans | 280 / 32 / 30 |
+| Final dataset (combined config) | **train 1,955 / val 241 / test 235** = 2,431 records |
+| Splits | 80 / 10 / 10 by deterministic hash over `base_id`; all variants of one base stay in one split |
+
+Counts per type across all configs (each clean record appears in all four):
+
+| Type | Total |
+|---|---:|
+| clean | 1,324 |
+| contradiction | 726 |
+| missing_tool | 1,404 |
+| overgeneration | 2,070 |
 
 ## Zero-shot baseline (validation split)
+
+> Numbers measured before the LLM-as-judge audit and recovery. They establish the pre-audit floor.
 
 | Config | Lexical baseline F1 | LettuceDetect F1 |
 |---|---|---|
@@ -136,40 +160,55 @@ Only ToolACE rows that pass all of the following are kept:
 | `missing_tool` (n=144) | 0.104 | 0.118 |
 | `overgeneration` (n=144) | 0.167 | 0.225 |
 
-- `lexical baseline`: char marked as hallucinated iff it belongs to a content word that is absent from the tool context. Recall is high (~0.75), precision is very low (~0.09) — i.e. tool answers mention many context-absent words even on clean records.
-- `LettuceDetect`: zero-shot inference with [`KRLabsOrg/lettucedect-base-modernbert-en-v1`](https://huggingface.co/KRLabsOrg/lettucedect-base-modernbert-en-v1). The model was trained on RAGTruth (news/QA domain), not tool-calling, so its precision in this domain is also low (~0.11) but it consistently improves recall and F1 over the lexical baseline.
+- `lexical baseline`: char marked as hallucinated iff it belongs to a content word that is absent from the tool context. Recall is high (~0.75), precision is very low (~0.09).
+- `LettuceDetect`: zero-shot inference with [`KRLabsOrg/lettucedect-base-modernbert-en-v1`](https://huggingface.co/KRLabsOrg/lettucedect-base-modernbert-en-v1). Trained on RAGTruth (news/QA domain), not tool-calling, so precision in this domain is also low (~0.11) but consistently improves recall and F1 over lexical.
 
 Reproducible from this repo:
 
 ```bash
-python scripts/zero_shot_eval.py --dataset-dir data/combined --split validation
-python scripts/zero_shot_eval.py --dataset-dir data/contradiction --split validation
-python scripts/zero_shot_eval.py --dataset-dir data/missing_tool --split validation
-python scripts/zero_shot_eval.py --dataset-dir data/overgeneration --split validation
+python src/data_processing/zero_shot_eval.py --dataset-dir data/final/combined --split validation
+python src/data_processing/zero_shot_eval.py --dataset-dir data/final/contradiction --split validation
+python src/data_processing/zero_shot_eval.py --dataset-dir data/final/missing_tool --split validation
+python src/data_processing/zero_shot_eval.py --dataset-dir data/final/overgeneration --split validation
 ```
-
-The per-record / per-type breakdown is written to `validation_report_validation.{md,json}` inside each dataset directory.
 
 ## Build
 
 ```bash
 python -m pip install -r requirements.txt
-python scripts/build_from_toolace.py
-python scripts/validate_spans.py --allow-clean data/combined/*.jsonl
+python src/data_processing/build_from_toolace.py                    # → data/combined/...
+python src/data_processing/audit.py run --backend openrouter \
+    --judge-model openai/gpt-oss-120b:free \
+    --dataset-dir data/combined --split train           # repeat for val/test
+python src/data_processing/audit.py filter \
+    --audit-dir data/quality_audit_openrouter/combined \
+    --source-dir data/combined --split train \
+    --out-dir data/combined_filtered/combined
+python src/data_processing/recover.py cleans \
+    --decisions data/quality_audit_openrouter/combined/train/decisions.jsonl \
+    --source data/combined/train.jsonl \
+    --out-dir data/recovered --split train
+python src/data_processing/recover.py extra-spans
+python src/data_processing/merge_final.py                            # → data/final/
+python src/data_processing/validate_spans.py --allow-clean \
+    data/final/combined/*.jsonl data/final/*/*.jsonl
 ```
 
 ## Push to the Hub
 
 ```bash
-python scripts/push_to_hub.py <user>/toolace-hallucination-spans --private
+python src/data_processing/push_to_hub.py <user>/toolace-hallucination-spans \
+    --data-dir data/final --readme DATASET_CARD.md
 ```
 
-This pushes all four configs (`combined`, `contradiction`, `missing_tool`, `overgeneration`) as separate dataset configurations.
+`--data-dir data/final` is the default; pass `--public` to make the repo public.
 
 ## Known limitations
 
-- Corruptions are synthetic and deterministic: each base example produces the same corruption seed-by-seed across runs. Useful for supervised span localization, but does not cover naturally occurring hallucination patterns (e.g. cascading errors across multi-turn dialogue).
-- `missing_tool` actions come from a curated list — they do not cover every tool capability that might be implied by an arbitrary user query.
-- `contradiction` quality depends on whether the clean final answer contains values that can be plausibly substituted. Examples without any grounded value of length ≥4 in the output are simply skipped, which is why `contradiction` has fewer records (486) than the other types (720 each).
-- The context is serialized JSON from tool/function messages, not re-rendered into natural language, so token positions and length distribution differ from RAGTruth's news-corpus context.
-- Baseline numbers above are zero-shot; we have not fine-tuned a detector yet. Fine-tuning is the natural next step (see the `Improve baselines` section of the task spec).
+- **Synthetic & deterministic.** Regex-based corruptions plus LLM-recovered real hallucinations. They don't cover naturally occurring cascading errors across multi-turn dialogue.
+- **Strict single-type schema.** Each record is annotated with a single corruption_type, and every label in the record must match it. When the audit found a *second* hallucination of a different type inside an already-corrupted record, the secondary label is dropped at merge — **the hallucinated text remains in the output but is no longer annotated**. This affected 288 records (231 train / 30 val / 27 test). The unannotated spans are preserved in `data/combined_patched/` for downstream consumers who want them.
+- **Off-topic answers** (data is grounded but the answer doesn't address the user query) don't fit the 3-type RAGTruth taxonomy. They are collected separately under `data/other/` (47 records) and excluded from the final dataset to keep the validator schema strict.
+- **`contradiction` is the hardest type.** Single-character substitutions are not allowed (`MIN_CONTRADICTION_LEN = 4`), and records without any grounded value of length ≥4 in the output are simply skipped, so `contradiction` has fewer records than the other types.
+- **`missing_tool` actions** come from a curated list — they don't cover every tool capability that might be implied by an arbitrary user query.
+- **Context format**: JSON-serialized tool messages, not re-rendered into natural language, so token positions and length distribution differ from RAGTruth's news-corpus context.
+- **Pre-fine-tune baselines only.** Numbers above are zero-shot. Fine-tuning is the natural next step (see the `Improve baselines` section of the task spec).
