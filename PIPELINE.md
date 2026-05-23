@@ -194,14 +194,6 @@ This combines the strengths of both:
 `meta.corruption_source = "llm_augment"` lets downstream training mix or
 split this subset cleanly.
 
-### 6. Publishing (`push_to_hub.py`)
-
-The same script pushes all four configs (combined, contradiction,
-missing_tool, overgeneration) as separate Hub dataset configurations, so
-consumers can `load_dataset("…/toolace-hallucination-spans", "contradiction")`
-to get only that one. The dataset card metadata in `README.md` points each
-config at its parquet directory.
-
 ## How to reproduce
 
 ```bash
@@ -228,17 +220,3 @@ done
 # 5. Publish
 .venv/bin/python scripts/push_to_hub.py <user>/toolace-hallucination-spans
 ```
-
-## Open follow-ups
-
-- The judge model (Qwen2.5-3B-Instruct) is small for this task. Swapping to
-  Qwen2.5-7B-Instruct (or an API-based judge like Claude/GPT) would raise
-  audit reliability but slow it down significantly.
-- LettuceDetect's zero-shot precision is low on this domain (~0.11), so fine-tuning
-  on `combined/train` should be the next experiment. The task spec also asks for
-  LookBackLens, which we haven't wired up yet (needs an LLM exposing attention
-  weights — Qwen2.5 works for this).
-- The judge's "extra_hallucination" findings on `clean` records are themselves
-  signal: they identify ToolACE source examples whose original final answer was
-  already imperfect. A pass that *removes* those from the clean pool would tighten
-  the negative class.
