@@ -41,7 +41,6 @@ scripts/
 notebooks/
   data_pipeline.ipynb     end-to-end walkthrough
 PIPELINE.md               pipeline architecture
-DATASET_USAGE.md          how to train / validate / test on the dataset
 DATASET_CARD.md           README of the published HF dataset
 ```
 
