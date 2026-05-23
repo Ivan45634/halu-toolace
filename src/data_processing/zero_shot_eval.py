@@ -1,10 +1,9 @@
 """Validation + zero-shot baseline for the tool-calling hallucination dataset.
 
 Usage:
-  python -m src.data_processing.zero_shot_eval [--dataset-dir data/combined]
-                                                [--split validation]
-                                                [--no-model] [--max-records N]
-                                                [--model-id KRLabsOrg/lettucedect-base-modernbert-en-v1]
+  python -m src.data_processing.zero_shot_eval --dataset-dir data/final/combined \
+      --split validation [--no-model] [--max-records N] \
+      [--model-id KRLabsOrg/lettucedect-base-modernbert-en-v1]
 
 Three checks per dataset split:
   1. Sanity         — uniqueness, label length distribution, position bias, query<->output overlap.
@@ -17,15 +16,12 @@ Output:
   <dataset_dir>/validation_report.json
 """
 
-from __future__ import annotations
-
 import argparse
 import json
 import re
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Iterable
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATASET_DIR = ROOT / "data" / "combined"
@@ -37,8 +33,12 @@ WORD_RE = re.compile(r"[A-Za-z0-9]+")
 
 
 def load(path: Path) -> list[dict]:
-    with path.open() as f:
+    with path.open(encoding="utf-8") as f:
         return [json.loads(line) for line in f]
+
+
+def average(values: list[int] | list[float]) -> float:
+    return sum(values) / len(values) if values else 0.0
 
 
 def tokenize(text: str) -> list[str]:
@@ -115,23 +115,21 @@ def sanity_check(records: list[dict]) -> dict:
         for lab in r["hallucination_labels"]:
             pos_from_start.append(lab["start"] / out_len)
 
-    avg = lambda xs: (sum(xs) / len(xs)) if xs else 0.0
-
     return {
         "n_records": len(records),
         "n_clean": clean_count,
         "n_hallucinated": len(records) - clean_count,
         "n_unique_outputs": len(output_counts),
         "n_duplicate_output_records": dup_outputs,
-        "avg_labels_per_record": avg(label_count),
+        "avg_labels_per_record": average(label_count),
         "label_length_min": min(label_lengths) if label_lengths else 0,
         "label_length_max": max(label_lengths) if label_lengths else 0,
-        "label_length_mean": avg(label_lengths),
+        "label_length_mean": average(label_lengths),
         "short_labels_le_3_chars": short_labels,
         "short_labels_pct": (short_labels / len(label_lengths) * 100) if label_lengths else 0.0,
-        "query_output_overlap_mean": avg(overlaps),
+        "query_output_overlap_mean": average(overlaps),
         "labels_by_type": dict(type_counts),
-        "label_relative_start_pos_mean": avg(pos_from_start),
+        "label_relative_start_pos_mean": average(pos_from_start),
     }
 
 

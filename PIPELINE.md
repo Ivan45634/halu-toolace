@@ -228,37 +228,37 @@ uv venv --python 3.11 .venv
 uv pip install --python .venv/bin/python -r requirements.txt
 
 # 1. Build
-.venv/bin/python src/data_processing/build_from_toolace.py
-.venv/bin/python src/data_processing/validate_spans.py --allow-clean data/combined/*.jsonl
+.venv/bin/python -m src.data_processing.build_from_toolace
+.venv/bin/python -m src.data_processing.validate_spans --allow-clean data/combined/*.jsonl
 
 # 2. Signal-level evaluation (sanity + lexical + LettuceDetect)
 for ds in combined contradiction missing_tool overgeneration; do
-  .venv/bin/python src/data_processing/zero_shot_eval.py --dataset-dir data/$ds --split validation
+  .venv/bin/python -m src.data_processing.zero_shot_eval --dataset-dir data/$ds --split validation
 done
 
 # 3. LLM-as-judge audit (gpt-oss-120b via OpenRouter)
 for split in train validation test; do
-  .venv/bin/python src/data_processing/audit.py run \
+  .venv/bin/python -m src.data_processing.audit run \
       --backend openrouter --judge-model openai/gpt-oss-120b:free \
       --dataset-dir data/combined --split $split --no-lettuce
 done
 
 # 4. Recover + patch + reclassify
 for split in train validation test; do
-  .venv/bin/python src/data_processing/recover.py cleans \
+  .venv/bin/python -m src.data_processing.recover cleans \
       --decisions data/quality_audit_openrouter/combined/$split/decisions.jsonl \
       --source data/combined/$split.jsonl \
       --out-dir data/recovered --split $split
 done
-.venv/bin/python src/data_processing/recover.py extra-spans
-.venv/bin/python src/data_processing/recover.py other
+.venv/bin/python -m src.data_processing.recover extra-spans
+.venv/bin/python -m src.data_processing.recover other
 
 # 5. Final merge + validation
-.venv/bin/python src/data_processing/merge_final.py
-.venv/bin/python src/data_processing/validate_spans.py --allow-clean \
+.venv/bin/python -m src.data_processing.merge_final
+.venv/bin/python -m src.data_processing.validate_spans --allow-clean \
     data/final/combined/*.jsonl data/final/*/*.jsonl
 
 # 6. Publish (data/final is the default --data-dir)
-.venv/bin/python src/data_processing/push_to_hub.py <user>/toolace-hallucination-spans \
+.venv/bin/python -m src.data_processing.push_to_hub <user>/toolace-hallucination-spans \
     --readme DATASET_CARD.md
 ```

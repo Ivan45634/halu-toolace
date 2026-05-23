@@ -4,16 +4,13 @@ Centralizes:
   - JSONL i/o
   - text helpers (truncate, collect_tool_names, derive_type_hint)
   - span localization (find_span, fuzzy match)
-  - JSON parsing (JSON_RE, parse_obj)
+  - JSON parsing (JSON_RE, parse_json_object)
   - judge backends (LocalJudge, OpenRouterJudge, load_judge)
   - prompt templates used across multiple scripts
 """
 
-from __future__ import annotations
-
 import json
 import re
-import sys
 import time
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -25,16 +22,18 @@ from typing import Any
 # ----------------------------------------------------------------------------
 
 
-def load_jsonl(path: Path) -> list[dict]:
-    if not Path(path).exists():
+def load_jsonl(path: str | Path) -> list[dict]:
+    path = Path(path)
+    if not path.exists():
         return []
-    with Path(path).open() as f:
+    with path.open(encoding="utf-8") as f:
         return [json.loads(line) for line in f]
 
 
-def write_jsonl(path: Path, rows: list[dict]) -> None:
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    with Path(path).open("w", encoding="utf-8") as f:
+def write_jsonl(path: str | Path, rows: list[dict]) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as f:
         for row in rows:
             f.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
 

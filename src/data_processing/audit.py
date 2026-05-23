@@ -18,8 +18,6 @@ Shared helpers live in common.py. Each subcommand uses the same data layout:
   source    = data/combined/<split>.jsonl
 """
 
-from __future__ import annotations
-
 import argparse
 import json
 import sys
@@ -29,29 +27,16 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
-try:
-    from .common import (  # package mode
-        AUDIT_SYSTEM,
-        AUDIT_USER_TEMPLATE,
-        collect_tool_names,
-        load_jsonl,
-        load_judge,
-        parse_json_object,
-        truncate,
-        write_jsonl,
-    )
-except ImportError:
-    sys.path.insert(0, str(Path(__file__).parent))
-    from common import (  # type: ignore  # script mode
-        AUDIT_SYSTEM,
-        AUDIT_USER_TEMPLATE,
-        collect_tool_names,
-        load_jsonl,
-        load_judge,
-        parse_json_object,
-        truncate,
-        write_jsonl,
-    )
+from .common import (
+    AUDIT_SYSTEM,
+    AUDIT_USER_TEMPLATE,
+    collect_tool_names,
+    load_jsonl,
+    load_judge,
+    parse_json_object,
+    truncate,
+    write_jsonl,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 JUDGE_MODEL_DEFAULT = "Qwen/Qwen2.5-3B-Instruct"

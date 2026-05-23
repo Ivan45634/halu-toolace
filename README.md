@@ -9,8 +9,7 @@ built on top of [`minpeter/toolace-parsed`](https://huggingface.co/datasets/minp
 
 ## Quickstart
 
-All commands work in both module-style (`python -m src.data_processing.X`) and
-direct-file form (`.venv/bin/python src/data_processing/X.py`).
+Run commands in package mode from the repository root (`python -m src.data_processing.X`).
 
 ```bash
 uv venv --python 3.11 .venv

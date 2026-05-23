@@ -17,8 +17,6 @@ Design choices (v2):
     ones so models cannot exploit a "every example has a span" prior.
 """
 
-from __future__ import annotations
-
 import copy
 import json
 import random

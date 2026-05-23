@@ -166,38 +166,38 @@ Counts per type across all configs (each clean record appears in all four):
 Reproducible from this repo:
 
 ```bash
-python src/data_processing/zero_shot_eval.py --dataset-dir data/final/combined --split validation
-python src/data_processing/zero_shot_eval.py --dataset-dir data/final/contradiction --split validation
-python src/data_processing/zero_shot_eval.py --dataset-dir data/final/missing_tool --split validation
-python src/data_processing/zero_shot_eval.py --dataset-dir data/final/overgeneration --split validation
+python -m src.data_processing.zero_shot_eval --dataset-dir data/final/combined --split validation
+python -m src.data_processing.zero_shot_eval --dataset-dir data/final/contradiction --split validation
+python -m src.data_processing.zero_shot_eval --dataset-dir data/final/missing_tool --split validation
+python -m src.data_processing.zero_shot_eval --dataset-dir data/final/overgeneration --split validation
 ```
 
 ## Build
 
 ```bash
 python -m pip install -r requirements.txt
-python src/data_processing/build_from_toolace.py                    # → data/combined/...
-python src/data_processing/audit.py run --backend openrouter \
+python -m src.data_processing.build_from_toolace                    # → data/combined/...
+python -m src.data_processing.audit run --backend openrouter \
     --judge-model openai/gpt-oss-120b:free \
     --dataset-dir data/combined --split train           # repeat for val/test
-python src/data_processing/audit.py filter \
+python -m src.data_processing.audit filter \
     --audit-dir data/quality_audit_openrouter/combined \
     --source-dir data/combined --split train \
     --out-dir data/combined_filtered/combined
-python src/data_processing/recover.py cleans \
+python -m src.data_processing.recover cleans \
     --decisions data/quality_audit_openrouter/combined/train/decisions.jsonl \
     --source data/combined/train.jsonl \
     --out-dir data/recovered --split train
-python src/data_processing/recover.py extra-spans
-python src/data_processing/merge_final.py                            # → data/final/
-python src/data_processing/validate_spans.py --allow-clean \
+python -m src.data_processing.recover extra-spans
+python -m src.data_processing.merge_final                            # → data/final/
+python -m src.data_processing.validate_spans --allow-clean \
     data/final/combined/*.jsonl data/final/*/*.jsonl
 ```
 
 ## Push to the Hub
 
 ```bash
-python src/data_processing/push_to_hub.py <user>/toolace-hallucination-spans \
+python -m src.data_processing.push_to_hub <user>/toolace-hallucination-spans \
     --data-dir data/final --readme DATASET_CARD.md
 ```
 

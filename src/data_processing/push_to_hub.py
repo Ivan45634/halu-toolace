@@ -6,8 +6,6 @@ Hub, so consumers can pick the one they want via
 ``load_dataset(repo_id, "contradiction")`` etc.
 """
 
-from __future__ import annotations
-
 import argparse
 import json
 from pathlib import Path

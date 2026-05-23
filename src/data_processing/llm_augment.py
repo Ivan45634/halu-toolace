@@ -21,8 +21,6 @@ Each output record has the same schema as the regex-built dataset but with
 meta.corruption_source set to "llm_augment".
 """
 
-from __future__ import annotations
-
 import argparse
 import json
 import random

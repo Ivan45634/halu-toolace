@@ -1,16 +1,16 @@
-"""Merge patched, recovered and reclassified records into the final dataset.
+"""Merge patched and recovered records into the final dataset.
 
 Sources:
   --patched-dir     <root>/<config>/<split>.jsonl   filtered + extra-label patches
   --recovered-dir   <root>/<split>.jsonl            new corrupted records from
                                                     judge-recovered false-negative cleans
-  --other-dir       <root>/<split>.jsonl            judge-reclassified "other" records
-                                                    (off-topic etc.)
+  --other-dir       <root>/<split>.jsonl            optional audit slice; kept out
+                                                    of final strict-3-type data
 
 Output:
   --out-dir/<config>/<split>.jsonl                  final per-config splits
 
-For each split we union the three sources, deduplicate by id, and route records
+For each split we union patched + recovered sources, deduplicate by id, and route records
 into the right configurations:
 
   combined        all records
@@ -18,31 +18,18 @@ into the right configurations:
   missing_tool    clean + records whose primary label is missing_tool
   overgeneration  clean + records whose primary label is overgeneration
 
-Records with `meta.corruption_type == "other"` go ONLY into combined (no per-
-type subset).
+Records from `--other-dir` are intentionally not loaded into the final dataset.
 """
 
-from __future__ import annotations
-
 import argparse
-import json
 from collections import Counter
 from pathlib import Path
+
+from .common import load_jsonl, write_jsonl
 
 
 SPLITS = ("train", "validation", "test")
 CONFIGS = ("combined", "contradiction", "missing_tool", "overgeneration")
-
-
-def load_jsonl(p: Path) -> list[dict]:
-    return [json.loads(l) for l in p.open()] if p.exists() else []
-
-
-def write_jsonl(p: Path, rows: list[dict]) -> None:
-    p.parent.mkdir(parents=True, exist_ok=True)
-    with p.open("w", encoding="utf-8") as f:
-        for r in rows:
-            f.write(json.dumps(r, ensure_ascii=False, sort_keys=True) + "\n")
 
 
 def primary_label(record: dict) -> str:

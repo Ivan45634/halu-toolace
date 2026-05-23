@@ -20,24 +20,18 @@ Filtering applied to source rows (in addition to the original schema checks):
     explanation — which would inject noise into the corruption pipeline)
 """
 
-from __future__ import annotations
-
 import argparse
 import hashlib
 import json
 import re
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from datasets import load_dataset
 
-try:
-    from .corruptors import collect_corpus_pool, make_corruptions  # package mode
-except ImportError:
-    import sys as _sys
-    _sys.path.insert(0, str(Path(__file__).parent))
-    from corruptors import collect_corpus_pool, make_corruptions  # type: ignore  # script mode
+from .common import write_jsonl
+from .corruptors import collect_corpus_pool, make_corruptions
 
 
 SOURCE_DATASET = "minpeter/toolace-parsed"
@@ -93,7 +87,7 @@ def main() -> None:
         combined_dir,
         records=all_records,
         split_by_base=split_by_base,
-        accept=lambda r: True,
+        accept=accept_all,
     )
 
     for corruption_type in ("contradiction", "missing_tool", "overgeneration"):
@@ -102,7 +96,7 @@ def main() -> None:
             per_type_dir,
             records=all_records,
             split_by_base=split_by_base,
-            accept=lambda r, t=corruption_type: r["meta"]["corruption_type"] in (t, "clean"),
+            accept=accept_type_or_clean(corruption_type),
         )
 
     # Backwards-compat copies in the data root so the existing zero_shot_eval script keeps working.
@@ -135,7 +129,7 @@ def write_partition(
     out_dir: Path,
     records: list[dict[str, Any]],
     split_by_base: dict[str, str],
-    accept,
+    accept: Callable[[dict[str, Any]], bool],
 ) -> dict[str, int]:
     out_dir.mkdir(parents=True, exist_ok=True)
     splits: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -147,6 +141,17 @@ def write_partition(
     for split in ("train", "validation", "test"):
         write_jsonl(out_dir / f"{split}.jsonl", splits[split])
     return {split: len(splits[split]) for split in ("train", "validation", "test")}
+
+
+def accept_all(record: dict[str, Any]) -> bool:
+    return True
+
+
+def accept_type_or_clean(corruption_type: str) -> Callable[[dict[str, Any]], bool]:
+    def accept(record: dict[str, Any]) -> bool:
+        return record["meta"]["corruption_type"] in (corruption_type, "clean")
+
+    return accept
 
 
 def load_clean_examples(
@@ -338,12 +343,6 @@ def split_base_ids(base_ids: list[str]) -> dict[str, str]:
 
 def stable_sort_key(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
-
-
-def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
-    with path.open("w", encoding="utf-8") as handle:
-        for row in rows:
-            handle.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
 
 
 if __name__ == "__main__":
