@@ -1,0 +1,23 @@
+# venv / cache
+.venv/
+.uv-cache/
+__pycache__/
+*.py[cod]
+*.so
+.ipynb_checkpoints/
+
+# generated data — dataset is on Hugging Face
+data/
+
+# logs
+*.log
+
+# task spec (not redistributable)
+Hallucination Detection in Tool Calling.pdf
+
+# macOS
+.DS_Store
+
+# editor
+.vscode/
+.idea/

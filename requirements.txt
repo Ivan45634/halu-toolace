@@ -1,0 +1,10 @@
+datasets>=2.19.0
+huggingface_hub>=0.23.0
+transformers>=4.48,<5
+torch>=2.0
+lettucedetect>=0.1.7
+
+# notebook / analysis
+pandas>=2.0
+ipykernel>=6.0
+nbconvert>=7.0
