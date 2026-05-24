@@ -23,3 +23,7 @@ Hallucination Detection in Tool Calling.pdf
 # editor
 .vscode/
 .idea/
+.cursor/
+
+# redundant result directories
+*.pdf
