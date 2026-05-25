@@ -1,0 +1,6 @@
+,combined,combined,combined,contradiction,contradiction,contradiction,missing_tool,missing_tool,missing_tool,overgeneration,overgeneration,overgeneration
+,P,R,F1,P,R,F1,P,R,F1,P,R,F1
+method,,,,,,,,,,,,
+lexical,0.8718,1.0,0.9315,0.5455,1.0,0.7059,0.7,1.0,0.8235,0.7656,1.0,0.8673
+lettucedect-base-modernbert-en-v1,0.922,0.9265,0.9242,0.6596,0.8611,0.747,0.7975,0.9,0.8456,0.8559,0.9694,0.9091
+lettucedect-large-modernbert-en-v1,0.9234,0.9461,0.9346,0.6522,0.8333,0.7317,0.8118,0.9857,0.8903,0.8545,0.9592,0.9038

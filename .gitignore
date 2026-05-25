@@ -1,5 +1,7 @@
 # venv / cache
 .venv/
+env/
+venv/
 .uv-cache/
 __pycache__/
 *.py[cod]
@@ -21,3 +23,7 @@ Hallucination Detection in Tool Calling.pdf
 # editor
 .vscode/
 .idea/
+.cursor/
+
+# redundant result directories
+*.pdf
