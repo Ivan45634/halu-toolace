@@ -1,10 +1,7 @@
 # halu-toolace
 
 Span-level hallucination detection in tool-calling dialogues — full solution
-to **"Hallucination Detection in Tool Calling"**: dataset construction on top
-of ToolACE, evaluation of the two baselines from the task PDF
-(LettuceDetect and LookBackLens), and four improvements with a final
-LightGBM stacking ensemble.
+to **"Hallucination Detection in Tool Calling"**
 
 ## Results
 
@@ -141,9 +138,9 @@ External pretrained models pulled from HF at runtime (when `RUN_HEAVY=True`):
 
 ## Team project
 
-Elizaveta Kamenskaya
-Ivan Listopadov
-Arseny Ivanov
+Elizaveta Kamenskaya <br>
+Ivan Listopadov <br>
+Arseny Ivanov <br>
 Maxim Smirnov
 
 ## License
