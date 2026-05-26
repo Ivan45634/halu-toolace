@@ -16,6 +16,7 @@ data/
 
 # task spec (not redistributable)
 Hallucination Detection in Tool Calling.pdf
+*.pdf
 
 # macOS
 .DS_Store
@@ -25,5 +26,7 @@ Hallucination Detection in Tool Calling.pdf
 .idea/
 .cursor/
 
-# redundant result directories
-*.pdf
+# heavy artifacts — kept locally, pushed to HF / regenerated via RUN_HEAVY=True
+notebooks/results/modernbert_ft/checkpoint_final/
+notebooks/results/modernbert_ft/checkpoint/
+notebooks/results/lookbacklens_baseline/features/
