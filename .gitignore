@@ -30,3 +30,5 @@ Hallucination Detection in Tool Calling.pdf
 notebooks/results/modernbert_ft/checkpoint_final/
 notebooks/results/modernbert_ft/checkpoint/
 notebooks/results/lookbacklens_baseline/features/
+notebooks/results/qwen_lora/adapter/
+notebooks/results/qwen_lora/trainer_tmp/
