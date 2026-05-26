@@ -1,7 +1,6 @@
-# halu-toolace
+# Hallucination Detection in Tool Calling
 
-Span-level hallucination detection in tool-calling dialogues - full solution
-to **"Hallucination Detection in Tool Calling"**
+Span-level hallucination detection in tool-calling dialogues 
 
 ## Results
 
@@ -23,12 +22,13 @@ Sentence-level F1 on the published test split (the metric used for leaderboard r
 | **LightGBM ensemble** | **0.871** | **0.877** | **0.993** | **0.824** |
 
 The strongest single model (ModernBERT fine-tune) improves the best baseline
-sentence F1 by **+0.31 absolute** on `combined`; the ensemble adds another
-+0.07. The **Qwen-2.5-7B LoRA** generative detector (different paradigm: LLM emits
+sentence F1 by **+0.31 absolute** on `combined`. The ensemble adds another
++0.07. The **Qwen-2.5-7B LoRA** generative detector (LLM emits
 `<halu type="...">...</halu>` markers, char offsets recovered by regex) reaches
 **sentence F1 0.800 on `contradiction`** — the best single-model number on the
-hardest type, +4 pp over ModernBERT. See `notebooks/solution.ipynb` for full
-code, training curves and analytics (heatmaps + calibration + disagreement).
+hardest type, +4 pp over ModernBERT. 
+
+See `notebooks/solution.ipynb` for full code, training curves and analytics.
 
 ## Repository layout
 
@@ -56,21 +56,19 @@ DATASET_CARD.md                README of the published HF dataset
 * `notebooks/solution.ipynb`:
 
 ```
-Part1 Data
-Part2 Methods
-  §1  LettuceDetect - baseline 1 (lexical + base + large)
-  §2  LookBackLens - baseline 2 (Llama-2-7b + LR)
-  §3  ModernBERT fine-tune     
-  §4  NLI zero-shot
-  §5  Rule-based missing_tool
-  §6  LightGBM ensemble
-  §7  Qwen-2.5-7B LoRA (generative detector)
-  §8  Analytics — confidence/calibration/disagreement/type-confusion/entropy heatmaps
+Part 1 Data
+Part 2 Methods
+  LettuceDetect - baseline 1 (lexical + base + large)
+  LookBackLens - baseline 2 (Llama-2-7b + LR)
+Part 3 Improvement methods
+  ModernBERT fine-tune     
+  NLI zero-shot
+  Rule-based missing_tool
+  LightGBM ensemble
+  Qwen-2.5-7B LoRA (generative detector)
+  Ablation analytics — confidence/calibration/disagreement/type-confusion/entropy heatmaps
   Final results table + cross-method plot
-  Per-corruption-type breakdown
-  Qualitative inspection
-  Ensemble feature importance
-  Discussion + Reproducibility
+  Qualitative inspection + Discussion + Reproducibility
 ```
 
 
@@ -78,8 +76,6 @@ Part2 Methods
 
 - **Original dataset:** ['minpeter/toolace-parsed`](https://huggingface.co/datasets/minpeter/toolace-parsed)
 - **Dataset on Hugging Face:** [`Ivan1008/toolace-hallucination-spans`](https://huggingface.co/datasets/Ivan1008/toolace-hallucination-spans)
-- **Trained encoder model on Hugging Face:** [`ArsenyIvanov/toolace-halu-modernbert-large`](https://huggingface.co/ArsenyIvanov/toolace-halu-modernbert-large)
-- **Trained generative LoRA on Hugging Face:** [`ArsenyIvanov/toolace-halu-qwen-lora`](https://huggingface.co/ArsenyIvanov/toolace-halu-qwen-lora) — LoRA adapter for `Qwen/Qwen2.5-7B-Instruct`
 - **Schema:** RAGTruth-compatible (`query`, `context`, `output`, `hallucination_labels`)
 - **Configs:** `combined`, `contradiction`, `missing_tool`, `overgeneration`
 
