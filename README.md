@@ -12,9 +12,9 @@ Sentence-level F1 on the published test split (the metric used for leaderboard r
 | method | combined | contradiction | missing_tool | overgeneration |
 |---|---:|---:|---:|---:|
 | lexical floor | 0.302 | 0.231 | 0.218 | 0.319 |
-| LettuceDetect-base (PDF §2 baseline 1) | 0.331 | 0.286 | 0.287 | 0.321 |
-| LettuceDetect-large (PDF §2 baseline 1) | 0.361 | 0.315 | 0.330 | 0.335 |
-| LookBackLens zero-shot from RAGTruth (PDF §2 baseline 2) | 0.308 | 0.273 | 0.232 | 0.312 |
+| LettuceDetect-base (baseline 1.1) | 0.331 | 0.286 | 0.287 | 0.321 |
+| LettuceDetect-large (baseline 1.2) | 0.361 | 0.315 | 0.330 | 0.335 |
+| LookBackLens zero-shot from RAGTruth (baseline 2) | 0.308 | 0.273 | 0.232 | 0.312 |
 | LookBackLens in-domain on ToolACE | 0.489 | 0.377 | 0.406 | 0.508 |
 | NLI zero-shot (DeBERTa-v3-large-mnli) | 0.326 | 0.288 | 0.252 | 0.322 |
 | Rule-based missing_tool | 0.043 | 0.000 | 0.156 | 0.000 |
