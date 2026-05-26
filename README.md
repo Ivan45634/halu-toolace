@@ -139,6 +139,13 @@ External pretrained models pulled from HF at runtime (when `RUN_HEAVY=True`):
 `MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli`,
 `sentence-transformers/all-MiniLM-L6-v2`.
 
+## Team project
+
+Elizaveta Kamenskaya
+Ivan Listopadov
+Arseny Ivanov
+Maxim Smirnov
+
 ## License
 
 Apache 2.0 (matches `minpeter/toolace-parsed`).
